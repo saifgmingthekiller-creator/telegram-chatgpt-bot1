@@ -1,6 +1,7 @@
 import os
 import logging
 from telegram import Update
+from telegram.constants import ChatAction
 from telegram.ext import (
     ApplicationBuilder,
     CommandHandler,
@@ -10,80 +11,78 @@ from telegram.ext import (
 )
 from openai import OpenAI
 
-# ==============================
-# إعدادات أساسية
-# ==============================
-
+# ======================
+# Logging
+# ======================
 logging.basicConfig(
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    level=logging.INFO
+    level=logging.INFO,
+    format="%(asctime)s - %(levelname)s - %(message)s"
 )
 
-BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
-OPENAI_KEY = os.getenv("OPENAI_API_KEY")
-
-if not BOT_TOKEN:
-    raise ValueError("8395211430:AAFXxPNeQXLhMmFveDqUhPavY_mIySqYbUI")
-
-if not OPENAI_KEY:
-    raise ValueError("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")
+BOT_TOKEN = os.getenv("8395211430:AAFXxPNeQXLhMmFveDqUhPavY_mIySqYbUI")
+OPENAI_KEY = os.getenv("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")
 
 client = OpenAI(api_key=OPENAI_KEY)
 
-# ==============================
-# أوامر البوت
-# ==============================
-
+# ======================
+# Commands
+# ======================
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
-        "👋 أهلاً بيك!\n\n"
-        "أنا بوت ذكاء اصطناعي 🤖\n"
-        "اكتب أي سؤال وأنا هجاوبك فورًا."
+        "👋 أهلاً!\n"
+        "اكتب أي سؤال بأي لغة وأنا هرد عليك 🤖"
     )
 
-async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text(
-        "🛠 الأوامر المتاحة:\n\n"
-        "/start - تشغيل البوت\n"
-        "/help - عرض المساعدة\n\n"
-        "أو ابعت أي رسالة عادية وهرد عليك."
-    )
+# ======================
+# Message Handler
+# ======================
+async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not update.message or not update.message.text:
+        return
 
-# ==============================
-# الرد على الرسائل
-# ==============================
-
-async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_text = update.message.text
+
+    # علامة إن البوت بيكتب
+    await context.bot.send_chat_action(
+        chat_id=update.effective_chat.id,
+        action=ChatAction.TYPING
+    )
 
     try:
         response = client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[
-                {"role": "system", "content": "You are a helpful assistant that speaks Arabic."},
-                {"role": "user", "content": user_text}
+                {
+                    "role": "system",
+                    "content": "Reply in the same language as the user."
+                },
+                {
+                    "role": "user",
+                    "content": user_text
+                }
             ],
+            timeout=30
         )
 
         reply = response.choices[0].message.content
         await update.message.reply_text(reply)
 
     except Exception as e:
-        logging.error(f"Error: {e}")
-        await update.message.reply_text("❌ حصل خطأ أثناء المعالجة، حاول مرة تانية.")
+        logging.error(f"OpenAI error: {e}")
+        await update.message.reply_text(
+            "❌ حصل خطأ أثناء الإجابة.\n"
+            "جرب سؤال تاني أو بعد شوية."
+        )
 
-# ==============================
-# تشغيل التطبيق
-# ==============================
-
+# ======================
+# App
+# ======================
 def main():
     app = ApplicationBuilder().token(BOT_TOKEN).build()
 
     app.add_handler(CommandHandler("start", start))
-    app.add_handler(CommandHandler("help", help_command))
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, chat))
 
-    print("Bot is running...")
     app.run_polling()
 
 if __name__ == "__main__":
