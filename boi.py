@@ -19,7 +19,7 @@ logging.basicConfig(
     format="%(asctime)s - %(levelname)s - %(message)s"
 )
 
-BOT_TOKEN = os.getenv("8395211430:AAFXxPNeQXLhMmFveDqUhPavY_mIySqYbUI")
+BOT_TOKEN = os.getenv("8395211430:AAFBz6EDESfqJ-4kcUMKR94QsdUDqjqYAbg")
 OPENAI_KEY = os.getenv("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")
 
 client = OpenAI(api_key=OPENAI_KEY)
